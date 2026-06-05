@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, redirect
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
@@ -41,6 +41,28 @@ def register():
 
     # If it's a GET request, render the registration form
     return render_template("register.html")
+
+# Create a login route that checks email and password against the database and returns a success message if they match
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        email = request.form["email"]
+        password = request.form["password"]
+
+        # Query the database for a user with the provided email and password
+        user = User.query.filter_by(email=email, password=password).first()
+
+        if user:
+            return redirect("/dashboard")
+        else:
+            return "Invalid email or password."
+
+    # If it's a GET request, render the login form
+    return render_template("login.html")
+
+@app.route("/dashboard")
+def dashboard():
+    return "<h1>Welcome to ExamQuest AI Dashboard</h1>"
  
 if __name__ == "__main__":
     with app.app_context():
