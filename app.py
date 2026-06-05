@@ -1,6 +1,5 @@
-from flask import Flask
+from flask import Flask, request, render_template
 from flask_sqlalchemy import SQLAlchemy
-from flask import Flask, render_template
 
 app = Flask(__name__)
 
@@ -23,9 +22,24 @@ class User(db.Model):
 def home():
     return "Welcome to ExamQuest AI"
 
-# Create a registration route that renders register.html
+# Create a registration route that accepts POST requests and saves a user to the database
 @app.route("/register", methods=["GET", "POST"])
 def register():
+    if request.method == "POST":
+        username = request.form["username"]
+        email = request.form["email"]
+        password = request.form["password"]
+
+        # Create a new user instance
+        new_user = User(username=username, email=email, password=password)
+
+        # Add the new user to the database
+        db.session.add(new_user)
+        db.session.commit()
+
+        return "Registration successful!"
+
+    # If it's a GET request, render the registration form
     return render_template("register.html")
  
 if __name__ == "__main__":
