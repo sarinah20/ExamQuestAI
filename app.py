@@ -34,6 +34,7 @@ class Subject(db.Model):
     subject_name = db.Column(db.String(120), nullable=False)
     exam_id = db.Column(db.Integer, db.ForeignKey('exam.id'), nullable=False)
     exam = db.relationship('Exam', backref=db.backref('subjects', lazy=True))
+    total_units = db.Column(db.Integer, nullable=False)
     def __repr__(self):
         return f'<Subject {self.subject_name} for Exam ID {self.exam_id}>'
     
@@ -107,9 +108,10 @@ def create_exam():
 def add_subject():
     if request.method == "POST":
         subject_name = request.form["subject_name"]
+        total_units = int(request.form["total_units"])
 
         # Create a new subject instance
-        new_subject = Subject(subject_name=subject_name, exam_id=1)
+        new_subject = Subject(subject_name=subject_name, exam_id=1  , total_units=total_units)
 
         # Add the new subject to the database
         db.session.add(new_subject)
@@ -119,6 +121,85 @@ def add_subject():
 
     # If it's a GET request, render the subject creation form
     return render_template("subjects.html")
+
+# Create a route called generate_plan that calculates study days remaining and displays a study plan based on the number of subjects and total units for each subject.
+@app.route("/generate_plan")
+def generate_plan():
+
+    exam = Exam.query.first()
+    subjects = Subject.query.filter_by(exam_id=exam.id).all()
+    schedule = []
+    remaining_units = {}
+
+    for subject in subjects:
+        remaining_units[subject.subject_name] = subject.total_units
+
+    while any(units > 0 for units in remaining_units.values()):
+
+        for subject_name in remaining_units:
+
+            if remaining_units[subject_name] > 0:
+
+                unit_number = (
+                    subjects[
+                        [s.subject_name for s in subjects].index(subject_name)
+                    ].total_units
+                    - remaining_units[subject_name]
+                    + 1
+                )
+
+                schedule.append(
+                    f"{subject_name} - Unit {unit_number}"
+                )
+
+                remaining_units[subject_name] -= 1
+
+    study_days = (exam.exam_date - date.today()).days - 1
+    total_units = sum(subject.total_units for subject in subjects)
+    units_per_day = total_units / study_days
+
+    if not exam:
+        return "No Exam Found"
+
+    subject_info = ""
+
+    for subject in subjects:
+        subject_info += f"""
+        {subject.subject_name}
+        - {subject.total_units} Units<br>
+        """
+    
+    plan_html = ""
+
+    day = 1
+
+    for task in schedule:
+
+        plan_html += f"""
+        Day {day}: {task}<br>
+        """
+
+        day += 1
+
+    return f"""
+    <h1>Study Plan Generator</h1>
+    Exam: {exam.exam_name}<br>
+    Exam Date: {exam.exam_date}<br>
+    Study Days Available: {study_days}<br>
+    Total Units: {total_units}<br>
+    Units Per Day: {round(units_per_day, 2)}<br>
+    <h2>Generated Plan</h2>
+
+    {plan_html}
+
+    <h2>Subjects</h2>
+    {subject_info}
+    """
+
+@app.route("/planner_setup")
+def planner_setup():
+    return "<h1>Planner Setup</h1>"
+
 
 @app.route("/dashboard")
 def dashboard():
