@@ -28,6 +28,15 @@ class Exam(db.Model):
     def __repr__(self):
         return f'<Exam {self.exam_name} for User ID {self.user_id}>'
     
+# Create a Subject model with id, subject_name and exam_id fields, where exam_id is a foreign key referencing the Exam model.
+class Subject(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    subject_name = db.Column(db.String(120), nullable=False)
+    exam_id = db.Column(db.Integer, db.ForeignKey('exam.id'), nullable=False)
+    exam = db.relationship('Exam', backref=db.backref('subjects', lazy=True))
+    def __repr__(self):
+        return f'<Subject {self.subject_name} for Exam ID {self.exam_id}>'
+    
 
 @app.route("/")
 def home():
@@ -93,6 +102,24 @@ def create_exam():
     # If it's a GET request, render the exam creation form
     return render_template("exam.html")
 
+# Create a route called add_subject that renders subjects.html and saves a subject to the database
+@app.route("/add_subject", methods=["GET", "POST"])
+def add_subject():
+    if request.method == "POST":
+        subject_name = request.form["subject_name"]
+
+        # Create a new subject instance
+        new_subject = Subject(subject_name=subject_name, exam_id=1)
+
+        # Add the new subject to the database
+        db.session.add(new_subject)
+        db.session.commit()
+
+        return redirect("/dashboard")
+
+    # If it's a GET request, render the subject creation form
+    return render_template("subjects.html")
+
 @app.route("/dashboard")
 def dashboard():
 
@@ -103,6 +130,13 @@ def dashboard():
 
     days_remaining = (exam.exam_date - date.today()).days
 
+    subjects = Subject.query.filter_by(exam_id=exam.id).all()
+
+    subject_list = ""
+
+    for subject in subjects:
+        subject_list += f"<li>{subject.subject_name}</li>"
+
     return f"""
     <h1>Welcome to ExamQuest AI Dashboard</h1>
 
@@ -111,6 +145,12 @@ def dashboard():
     <p>Exam Date: {exam.exam_date}</p>
 
     <p>Days Remaining: {days_remaining}</p>
+
+    <h3>Subjects</h3>
+
+    <ul>
+        {subject_list}
+    </ul>
     """
  
 if __name__ == "__main__":
