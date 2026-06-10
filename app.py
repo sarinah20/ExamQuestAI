@@ -1,5 +1,6 @@
 from flask import Flask, request, render_template, redirect
 from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime, date
 
 app = Flask(__name__)
 
@@ -16,6 +17,16 @@ class User(db.Model):
     password = db.Column(db.String(120), nullable=False)
     def __repr__(self):
         return f'<User {self.username}>'
+    
+# Create an Exam model with id, exam_name, exam_date and user_id fields, where user_id is a foreign key referencing the User model.
+class Exam(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    exam_name = db.Column(db.String(120), nullable=False)
+    exam_date = db.Column(db.Date, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = db.relationship('User', backref=db.backref('exams', lazy=True))
+    def __repr__(self):
+        return f'<Exam {self.exam_name} for User ID {self.user_id}>'
     
 
 @app.route("/")
@@ -60,9 +71,47 @@ def login():
     # If it's a GET request, render the login form
     return render_template("login.html")
 
+# Create a route called create_exam that renders exam.html
+@app.route("/create_exam", methods=["GET", "POST"])
+def create_exam():
+    if request.method == "POST":
+        exam_name = request.form["exam_name"]
+        exam_date = datetime.strptime(
+            request.form["exam_date"],
+            "%Y-%m-%d"
+        ).date()
+
+        # Create a new exam instance
+        new_exam = Exam(exam_name=exam_name, exam_date=exam_date, user_id=1)
+
+        # Add the new exam to the database
+        db.session.add(new_exam)
+        db.session.commit()
+
+        return redirect("/dashboard")
+
+    # If it's a GET request, render the exam creation form
+    return render_template("exam.html")
+
 @app.route("/dashboard")
 def dashboard():
-    return "<h1>Welcome to ExamQuest AI Dashboard</h1>"
+
+    exam = Exam.query.first()
+
+    if not exam:
+        return "<h1>No Exams Added Yet</h1>"
+
+    days_remaining = (exam.exam_date - date.today()).days
+
+    return f"""
+    <h1>Welcome to ExamQuest AI Dashboard</h1>
+
+    <h2>{exam.exam_name}</h2>
+
+    <p>Exam Date: {exam.exam_date}</p>
+
+    <p>Days Remaining: {days_remaining}</p>
+    """
  
 if __name__ == "__main__":
     with app.app_context():
