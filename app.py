@@ -1,6 +1,7 @@
-from flask import Flask, request, render_template, redirect
+from flask import Flask, request, render_template, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, date
+
 
 app = Flask(__name__)
 
@@ -126,6 +127,10 @@ def add_subject():
 @app.route("/generate_plan")
 def generate_plan():
 
+    preparation_level = request.args.get("preparation_level")
+    study_hours = int(request.args.get("study_hours", 2))
+    favorite_subject = request.args.get("favorite_subject")
+    least_favorite_subject = request.args.get("least_favorite_subject")
     exam = Exam.query.first()
     subjects = Subject.query.filter_by(exam_id=exam.id).all()
     schedule = []
@@ -133,6 +138,8 @@ def generate_plan():
 
     for subject in subjects:
         remaining_units[subject.subject_name] = subject.total_units
+    if least_favorite_subject in remaining_units:
+        remaining_units[least_favorite_subject] += 1
 
     while any(units > 0 for units in remaining_units.values()):
 
@@ -157,9 +164,23 @@ def generate_plan():
     study_days = (exam.exam_date - date.today()).days - 1
     total_units = sum(subject.total_units for subject in subjects)
     units_per_day = total_units / study_days
+    if study_hours <= 2:
+        max_units_per_day = 1
+
+    elif study_hours <= 4:
+        max_units_per_day = 2
+
+    else:
+        max_units_per_day = 3
 
     if not exam:
         return "No Exam Found"
+    
+    if preparation_level == "Beginner":
+        max_units_per_day = max(1, max_units_per_day - 1)
+    
+    elif preparation_level == "Revision Only":
+        max_units_per_day += 1
 
     subject_info = ""
 
@@ -173,23 +194,59 @@ def generate_plan():
 
     day = 1
 
-    for task in schedule:
+    for i in range(0, len(schedule), max_units_per_day):
 
-        plan_html += f"""
-        Day {day}: {task}<br>
-        """
+        day_tasks = schedule[i:i + max_units_per_day]
+
+        plan_html += f"<b>Day {day}</b><br>"
+
+        for task in day_tasks:
+            plan_html += f"{task}<br>"
+
+        plan_html += "<br>"
 
         day += 1
 
+    message = ""
+
+    if least_favorite_subject:
+        message += f"""
+        ⚡ {least_favorite_subject} is marked as your least favorite subject.
+        Make sure to generate quizzes and revision notes frequently for this subject.<br><br>
+        """
+
+    if favorite_subject:
+        message += f"""
+        🌟 {favorite_subject} is your favorite subject.
+        Use it as a confidence booster between difficult study sessions.<br><br>
+        """
+
+    if preparation_level == "Beginner":
+        message += """
+        📚 You selected Beginner mode.
+        Focus on understanding concepts first and don't rush through units.<br><br>
+        """
+
+    elif preparation_level == "Revision Only":
+        message += """
+        🚀 You selected Revision Only mode.
+        Focus on solving questions and revising weak areas.<br><br>
+        """    
+
     return f"""
     <h1>Study Plan Generator</h1>
+    {message}
     Exam: {exam.exam_name}<br>
     Exam Date: {exam.exam_date}<br>
     Study Days Available: {study_days}<br>
     Total Units: {total_units}<br>
     Units Per Day: {round(units_per_day, 2)}<br>
+    Max Units Per Day: {max_units_per_day}<br>
     <h2>Generated Plan</h2>
-
+    Favorite Subject: {favorite_subject}<br>
+    Least Favorite Subject: {least_favorite_subject}<br>
+    Study Hours: {study_hours}<br>
+    Preparation Level: {preparation_level}<br><br>
     {plan_html}
 
     <h2>Subjects</h2>
@@ -203,14 +260,21 @@ def planner_setup():
         study_hours = int(request.form["study_hours"])
         favorite_subject = request.form["favorite_subject"]
         least_favorite_subject = request.form["least_favorite_subject"]
+        subjects = Subject.query.all()
 
-        return f"""
-        Preparation Level: {preparation_level}<br>
-        Study Hours: {study_hours}<br>
-        Favorite Subject: {favorite_subject}<br>
-        Least Favorite Subject: {least_favorite_subject}        
-        """ 
-    return render_template("planner.html")
+        return redirect(
+            url_for(
+                "generate_plan",
+                preparation_level=preparation_level,
+                study_hours=study_hours,
+                favorite_subject=favorite_subject,
+                least_favorite_subject=least_favorite_subject
+            )
+        )
+    return render_template(
+        "planner_setup.html",
+        subjects=subjects
+    )
 
 
 @app.route("/dashboard")
