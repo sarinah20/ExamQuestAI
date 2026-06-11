@@ -1,0 +1,57 @@
+<h1>Planner Setup</h1>
+
+<form method="POST">
+
+    <label>Preparation Level:</label>
+
+    <select name="preparation_level">
+
+        <option value="Beginner">Beginner</option>
+
+        <option value="Average">Average</option>
+
+        <option value="Revision Only">Revision Only</option>
+
+    </select>
+
+    <br><br>
+
+    <label>Study Hours Per Day:</label>
+
+    <input
+        type="number"
+        name="study_hours"
+        min="1"
+        max="9"
+        required>
+
+          <br><br>
+
+    <br><br>
+
+    <label>Favorite Subject:</label>
+
+    <select name="favorite_subject">
+
+        <option value="AI">AI</option>
+        <option value="DM">DM</option>
+        <option value="SE">SE</option>
+
+    </select>
+
+    <br><br>
+    
+    <label>Least Favorite Subject:</label>
+    
+    <select name="least_favorite_subject">
+    
+        <option value="AI">AI</option>
+        <option value="DM">DM</option>
+        <option value="SE">SE</option>
+    
+    </select>
+
+    <button type="submit">
+        Generate My Schedule
+    </button>
+</form>

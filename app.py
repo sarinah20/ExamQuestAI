@@ -196,9 +196,21 @@ def generate_plan():
     {subject_info}
     """
 
-@app.route("/planner_setup")
+@app.route("/planner_setup", methods=["GET", "POST"])
 def planner_setup():
-    return "<h1>Planner Setup</h1>"
+    if request.method == "POST":
+        preparation_level = request.form["preparation_level"]
+        study_hours = int(request.form["study_hours"])
+        favorite_subject = request.form["favorite_subject"]
+        least_favorite_subject = request.form["least_favorite_subject"]
+
+        return f"""
+        Preparation Level: {preparation_level}<br>
+        Study Hours: {study_hours}<br>
+        Favorite Subject: {favorite_subject}<br>
+        Least Favorite Subject: {least_favorite_subject}        
+        """ 
+    return render_template("planner.html")
 
 
 @app.route("/dashboard")
